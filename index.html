@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="FORJA – Registre e acompanhe seus treinos.">
+  <meta name="theme-color" content="#FF5733">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FORJA">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>FORJA</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="logo">FOR<span>J</span>A</div>
+    <div class="header-actions">
+      <button class="icon-btn" id="themeBtn" onclick="toggleTheme()" title="Alternar tema">☀️</button>
+    </div>
+  </header>
+
+  <!-- PAGES -->
+
+  <!-- HOME -->
+  <section class="page active" id="page-home">
+    <div class="greeting">
+      <div class="greeting-sub">Bem-vindo de volta</div>
+      <div class="greeting-name" id="greeting-name">Atleta</div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card accent-card">
+        <div class="stat-label">Total de Treinos</div>
+        <div class="stat-value" id="stat-total">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Essa Semana</div>
+        <div class="stat-value" id="stat-week">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sequência</div>
+        <div class="stat-value" id="stat-streak">0<span class="unit">🔥</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Volume Total</div>
+        <div class="stat-value" id="stat-vol">0<span class="unit">kg</span></div>
+      </div>
+    </div>
+
+    <div class="streak-banner" id="streak-banner" style="display:none;">
+      <div class="streak-fire">🔥</div>
+      <div class="streak-text">
+        <div class="streak-num" id="streak-num">0 dias</div>
+        <div class="streak-label">de sequência ativa — continue assim!</div>
+      </div>
+    </div>
+
+    <div class="recent-label">Treinos Recentes</div>
+    <div id="recent-list"></div>
+  </section>
+
+  <!-- TREINOS -->
+  <section class="page" id="page-treinos">
+    <div style="padding-top:8px;"></div>
+    <p class="section-title">Meus <span>Treinos</span></p>
+    <div class="filter-row" id="filter-row"></div>
+    <div id="workout-list"></div>
+  </section>
+
+  <!-- TEMPORIZADOR -->
+  <section class="page" id="page-timer">
+    <div style="padding-top:8px;"></div>
+    <p class="section-title">Descanso <span>Timer</span></p>
+
+    <div class="card" style="margin-bottom:14px;">
+      <div class="timer-container">
+        <div class="timer-ring">
+          <svg width="200" height="200" viewBox="0 0 200 200">
+            <circle class="timer-ring-bg" cx="100" cy="100" r="88" fill="none" stroke-width="10"/>
+            <circle class="timer-ring-progress" id="timerProgressRing" cx="100" cy="100" r="88" fill="none" stroke-width="10"
+              stroke-dasharray="552.9" stroke-dashoffset="0"/>
+          </svg>
+          <div class="timer-display">
+            <div class="timer-value" id="timerValue">01:30</div>
+            <div class="timer-label">descanso</div>
+          </div>
+        </div>
+
+        <div class="timer-presets">
+          <button class="timer-preset" data-seconds="30">30s</button>
+          <button class="timer-preset selected" data-seconds="60">1min</button>
+          <button class="timer-preset" data-seconds="90">1:30</button>
+          <button class="timer-preset" data-seconds="120">2min</button>
+          <button class="timer-preset" data-seconds="180">3min</button>
+        </div>
+
+        <div class="timer-custom">
+          <label>Personalizado:</label>
+          <input type="number" id="customMin" placeholder="min" min="0" max="59" value="1">
+          <span style="color:var(--text2);font-size:16px;font-weight:600;">:</span>
+          <input type="number" id="customSec" placeholder="seg" min="0" max="59" value="30">
+        </div>
+
+        <div class="timer-controls">
+          <button class="timer-btn start" id="timerStartBtn">Iniciar</button>
+          <button class="timer-btn reset" id="timerResetBtn">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <p style="font-size:13px;color:var(--text2);line-height:1.7;">
+        💡 <strong style="color:var(--text);">Dica do personal:</strong> Descanso ideal por objetivo:<br>
+        <strong style="color:var(--accent);">Força</strong> → 2–3 min &nbsp;|&nbsp;
+        <strong style="color:var(--accent);">Hipertrofia</strong> → 60–90s &nbsp;|&nbsp;
+        <strong style="color:var(--accent);">Resistência</strong> → 30–45s
+      </p>
+    </div>
+  </section>
+
+  <!-- PROGRESSO -->
+  <section class="page" id="page-progresso">
+    <div style="padding-top:8px;"></div>
+    <p class="section-title">Meu <span>Progresso</span></p>
+
+    <!-- heatmap -->
+    <div class="chart-card">
+      <div class="chart-card-title">Consistência — últimos 28 dias</div>
+      <div class="heatmap-grid" id="heatmap-grid"></div>
+      <div class="heatmap-labels">
+        <span class="heatmap-label">28d atrás</span>
+        <span class="heatmap-label">Hoje</span>
+      </div>
+    </div>
+
+    <!-- volume chart -->
+    <div class="chart-card">
+      <div class="chart-card-title">Volume semanal (kg·rep)</div>
+      <canvas id="chartVolume"></canvas>
+    </div>
+
+    <!-- PRs -->
+    <div class="chart-card">
+      <div class="chart-card-title">Recordes pessoais (maior peso) 🏆</div>
+      <div id="pr-list" class="pr-list"></div>
+    </div>
+
+    <!-- muscle frequency -->
+    <div class="chart-card">
+      <div class="chart-card-title">Grupos musculares treinados</div>
+      <div id="muscle-bars"></div>
+    </div>
+
+    <!-- freq chart -->
+    <div class="chart-card">
+      <div class="chart-card-title">Frequência semanal</div>
+      <canvas id="chartFreq"></canvas>
+    </div>
+  </section>
+
+  <!-- PERFIL -->
+  <section class="page" id="page-perfil">
+    <div style="padding-top:8px;"></div>
+
+    <div class="profile-header">
+      <div class="avatar">💪</div>
+      <div class="profile-name" id="profileName">Atleta</div>
+      <div class="profile-since" id="profileTotal">0 treinos</div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px;">
+      <div class="section-title" style="font-size:16px;margin-bottom:16px;">Configurações</div>
+
+      <div class="setting-row">
+        <div class="setting-left">
+          <div class="setting-title">Seu nome</div>
+          <div class="setting-sub">Aparece no início do app</div>
+        </div>
+        <input id="profileNameInput" type="text" placeholder="Nome" style="
+          width:130px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);
+          background:var(--input-bg);color:var(--text);font-size:14px;text-align:right;outline:none;">
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-left">
+          <div class="setting-title">Modo de exibição</div>
+          <div class="setting-sub">Claro ou escuro</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="themeToggleCheck" onchange="toggleTheme()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-left">
+          <div class="setting-title">Descanso padrão (seg)</div>
+          <div class="setting-sub">Usado como duração inicial do timer</div>
+        </div>
+        <input id="restTimeInput" type="number" min="10" max="600" value="90" style="
+          width:80px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);
+          background:var(--input-bg);color:var(--text);font-size:14px;text-align:right;outline:none;">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="font-size:16px;margin-bottom:10px;">Sobre o FORJA</div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.8;">
+        FORJA é seu diário de treinos pessoal. Registre exercícios, acompanhe evolução, bata seus recordes e mantenha a chama acesa. 🔥<br><br>
+        Todos os dados ficam no seu dispositivo.
+      </p>
+    </div>
+  </section>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-page="home">
+      <span class="nav-icon">🏠</span>
+      <span>Início</span>
+    </button>
+    <button class="nav-item" data-page="treinos">
+      <span class="nav-icon">🏋️</span>
+      <span>Treinos</span>
+    </button>
+    <button class="nav-item" data-page="timer">
+      <span class="nav-icon">⏱</span>
+      <span>Timer</span>
+    </button>
+    <button class="nav-item" data-page="progresso">
+      <span class="nav-icon">📈</span>
+      <span>Progresso</span>
+    </button>
+    <button class="nav-item" data-page="perfil">
+      <span class="nav-icon">👤</span>
+      <span>Perfil</span>
+    </button>
+  </nav>
+
+  <!-- FAB -->
+  <button class="fab" id="mainFab" title="Novo treino">+</button>
+
+  <!-- MINI TIMER -->
+  <div class="timer-fab" id="timerFab" style="display:none;" onclick="navigateTo('timer')">
+    <div class="timer-mini">
+      <div class="timer-mini-dot"></div>
+      <div class="timer-mini-val" id="miniTimerVal">01:30</div>
+    </div>
+  </div>
+
+</div><!-- end #app -->
+
+<!-- ADD WORKOUT OVERLAY -->
+<div class="overlay" id="addOverlay" onclick="if(event.target===this)closeAddWorkout()">
+  <div class="drawer">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title">Novo Treino</div>
+
+    <div class="field">
+      <label>Nome do treino *</label>
+      <input type="text" id="wName" placeholder="Ex: Peito e Tríceps, Leg Day...">
+    </div>
+
+    <div class="field">
+      <label>Grupos musculares</label>
+      <div id="muscle-checks" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;"></div>
+    </div>
+
+    <div class="field">
+      <label>Exercícios</label>
+    </div>
+    <div id="exercises-list" class="exercises-list"></div>
+    <button class="btn-add-ex" onclick="addExercise()">+ Adicionar exercício</button>
+
+    <div class="field">
+      <label>Observações</label>
+      <textarea id="wNote" placeholder="Como foi o treino hoje?"></textarea>
+    </div>
+
+    <button class="btn-primary" onclick="saveWorkout()">💾 Salvar Treino</button>
+    <button class="btn-secondary" onclick="closeAddWorkout()">Cancelar</button>
+  </div>
+</div>
+
+<!-- WORKOUT DETAIL OVERLAY -->
+<div class="overlay" id="detailOverlay" onclick="if(event.target===this)closeDetail()">
+  <div class="drawer">
+    <div class="drawer-handle"></div>
+    <div id="detailContent"></div>
+    <button class="btn-secondary" onclick="closeDetail()" style="margin-top:12px;">Fechar</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- SCRIPTS -->
+<script src="js/db.js"></script>
+<script src="js/timer.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
