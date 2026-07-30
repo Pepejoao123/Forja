@@ -628,6 +628,11 @@ function abandonActiveWorkout() {
 function setupTimer() {
   const dur = settings.restTime || 90;
   Timer.setDuration(dur);
+  // Sync custom input fields to match initial duration (don't trigger applyCustomTime)
+  const minEl = document.getElementById('customMin');
+  const secEl = document.getElementById('customSec');
+  if (minEl) minEl.value = Math.floor(dur / 60);
+  if (secEl) secEl.value = dur % 60;
 
   Timer.onTick((rem, total) => {
     updateTimerDisplay(rem, total);
@@ -653,8 +658,8 @@ function setupTimer() {
     });
   });
 
-  document.getElementById('customMin')?.addEventListener('input', applyCustomTime);
-  document.getElementById('customSec')?.addEventListener('input', applyCustomTime);
+  document.getElementById('customMin')?.addEventListener('change', applyCustomTime);
+  document.getElementById('customSec')?.addEventListener('change', applyCustomTime);
 
   document.getElementById('timerStartBtn')?.addEventListener('click', () => {
     if (Timer.isRunning()) {
@@ -677,10 +682,13 @@ function setupTimer() {
 }
 
 function applyCustomTime() {
-  const m = parseInt(document.getElementById('customMin')?.value || 0);
-  const s = parseInt(document.getElementById('customSec')?.value || 0);
+  const mRaw = document.getElementById('customMin')?.value;
+  const sRaw = document.getElementById('customSec')?.value;
+  if (mRaw === '' && sRaw === '') return; // ignore if both blank
+  const m = parseInt(mRaw || 0);
+  const s = parseInt(sRaw || 0);
   const total = m * 60 + s;
-  if (total > 0) {
+  if (total > 0 && !Timer.isRunning()) {
     document.querySelectorAll('.timer-preset').forEach(b => b.classList.remove('selected'));
     Timer.setDuration(total);
     Timer.reset();
