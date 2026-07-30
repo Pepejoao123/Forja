@@ -1,17 +1,80 @@
-// FORJA – App Main
+// FORJA – App Main v2
 'use strict';
+
+// ===== FRASES MOTIVACIONAIS =====
+const QUOTES = [
+  { text: "A dor que você sente hoje é a força que você terá amanhã.", author: "— Arnold Schwarzenegger" },
+  { text: "Não conte os dias. Faça os dias contarem.", author: "— Muhammad Ali" },
+  { text: "O único treino ruim é aquele que não aconteceu.", author: "— FORJA" },
+  { text: "Seu corpo consegue quase tudo. É sua mente que você precisa convencer.", author: "— FORJA" },
+  { text: "Disciplina é fazer o que precisa ser feito, mesmo quando não quer.", author: "— FORJA" },
+  { text: "Cada série te aproxima da melhor versão de você.", author: "— FORJA" },
+  { text: "Forje seu corpo. Forje sua mente. Forje seu caráter.", author: "— FORJA" },
+  { text: "O ferro não mente. Coloque mais peso ou fica onde está.", author: "— FORJA" },
+  { text: "Sucessos são a soma de pequenos esforços repetidos dia após dia.", author: "— Robert Collier" },
+  { text: "Levante pesos, não desculpas.", author: "— FORJA" },
+  { text: "Um ano de treino consistente muda mais do que uma vida de desculpas.", author: "— FORJA" },
+  { text: "Se parece difícil, é porque você está crescendo.", author: "— FORJA" },
+  { text: "O suor de hoje é o resultado de amanhã.", author: "— FORJA" },
+  { text: "Não pare quando estiver cansado. Pare quando terminar.", author: "— FORJA" },
+  { text: "Você não precisa ser extraordinário para começar, mas precisa começar para ser extraordinário.", author: "— Zig Ziglar" },
+  { text: "Treine como se ninguém estivesse assistindo. Apareça como se todos estivessem.", author: "— FORJA" },
+  { text: "A consistência bate o talento quando o talento não é consistente.", author: "— FORJA" },
+  { text: "Músculos não são construídos na academia. São construídos na recuperação.", author: "— FORJA" },
+  { text: "Seu maior competidor é você de ontem.", author: "— FORJA" },
+  { text: "Força não vem do que você consegue fazer. Vem de superar o que você achava impossível.", author: "— Rikki Rogers" },
+  { text: "A academia é cara. Ser fraco também é. Escolha seu investimento.", author: "— FORJA" },
+  { text: "Uma hora de treino é 4% do seu dia. Sem desculpas.", author: "— FORJA" },
+  { text: "Quando você quiser desistir, lembre do motivo que te fez começar.", author: "— FORJA" },
+  { text: "O corpo é seu templo. Trate-o com respeito e ele te servirá com força.", author: "— FORJA" },
+  { text: "Resultados não acontecem da noite pro dia. Mas acontecem todos os dias.", author: "— FORJA" },
+  { text: "Cada gota de suor é uma vitória silenciosa.", author: "— FORJA" },
+  { text: "A diferença entre quem consegue e quem não consegue é a vontade de tentar.", author: "— FORJA" },
+  { text: "Push harder than yesterday, if you want a different tomorrow.", author: "— FORJA" },
+  { text: "Você está a um treino de distância de um bom humor.", author: "— FORJA" },
+  { text: "O segredo é que não existe segredo. Treino, dieta, consistência.", author: "— FORJA" },
+  { text: "Seja mais forte do que suas desculpas.", author: "— FORJA" },
+  { text: "Cada repetição conta. Cada dia importa.", author: "— FORJA" },
+  { text: "O único lugar onde sucesso vem antes de trabalho é no dicionário.", author: "— Vince Lombardi" },
+  { text: "Treine a mente para ser mais forte que as emoções.", author: "— FORJA" },
+  { text: "Acordar cedo, treinar pesado, dormir bem. Repita.", author: "— FORJA" },
+  { text: "A jornada de mil quilômetros começa com um único passo — ou uma única série.", author: "— FORJA" },
+  { text: "Pequenas melhorias diárias resultam em resultados surpreendentes.", author: "— FORJA" },
+  { text: "Sua limitação é só a sua imaginação.", author: "— FORJA" },
+  { text: "Dores musculares são o som do seu corpo crescendo.", author: "— FORJA" },
+  { text: "Nunca se arrependa de um treino feito.", author: "— FORJA" },
+  { text: "O ferro é honesto. Ele pesa o mesmo toda vez. Quem muda é você.", author: "— FORJA" },
+  { text: "Transformação não é evento. É processo.", author: "— FORJA" },
+  { text: "Você não perde um treino. Você perde confiança, progresso e momentum.", author: "— FORJA" },
+  { text: "A academia te ensina mais do que levantar peso. Te ensina a não desistir.", author: "— FORJA" },
+];
+
+function getDailyQuote() {
+  const day = Math.floor(Date.now() / 864e5);
+  return QUOTES[day % QUOTES.length];
+}
 
 // ===== STATE =====
 let settings = DB.getSettings();
 let currentPage = 'home';
 let workoutDraft = { name: '', muscles: [], exercises: [], note: '' };
-let timerPageOpen = false;
 let filterMuscle = 'Todos';
-let progressPeriod = 'mes';
+let activeWorkout = null; // { templateId, name, exercises: [{name, sets:[{reps,weight,obs,done}], done}] }
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
   applyTheme();
+
+  // First time? show onboarding
+  if (settings.firstTime || !settings.name) {
+    document.getElementById('onboardingOverlay').classList.add('open');
+    return;
+  }
+
+  bootApp();
+});
+
+function bootApp() {
   setupNav();
   setupFAB();
   setupTimer();
@@ -20,37 +83,54 @@ document.addEventListener('DOMContentLoaded', () => {
   renderWorkouts();
   renderProgress();
   renderProfile();
+  checkActiveWorkoutBar();
 
-  // Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+}
+
+// ===== ONBOARDING =====
+function finishOnboarding() {
+  const name = document.getElementById('onboardingName').value.trim();
+  if (!name) { document.getElementById('onboardingName').focus(); return; }
+  settings.name = name;
+  settings.firstTime = false;
+  DB.saveSettings(settings);
+  document.getElementById('onboardingOverlay').classList.remove('open');
+
+  // Ask for notification permission right after onboarding
+  Timer.requestNotificationPermission();
+
+  bootApp();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('onboardingOverlay')?.classList.contains('open')) {
+    finishOnboarding();
   }
 });
 
 // ===== THEME =====
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', settings.theme);
-  const toggle = document.getElementById('themeToggleCheck');
-  if (toggle) toggle.checked = settings.theme === 'light';
-  // update icon
   const btn = document.getElementById('themeBtn');
   if (btn) btn.textContent = settings.theme === 'dark' ? '☀️' : '🌙';
+  const check = document.getElementById('themeToggleCheck');
+  if (check) check.checked = settings.theme === 'light';
 }
 
 function toggleTheme() {
   settings.theme = settings.theme === 'dark' ? 'light' : 'dark';
   DB.saveSettings(settings);
   applyTheme();
-  setTimeout(() => { renderProgress(); }, 100); // redraw charts
+  setTimeout(() => renderProgress(), 100);
 }
 
 // ===== NAVIGATION =====
 function setupNav() {
   document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const page = item.dataset.page;
-      navigateTo(page);
-    });
+    item.addEventListener('click', () => navigateTo(item.dataset.page));
   });
 }
 
@@ -62,34 +142,39 @@ function navigateTo(page) {
   document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
 
   const fab = document.getElementById('mainFab');
-  if (fab) fab.style.display = page === 'treinos' || page === 'home' ? 'flex' : 'none';
+  if (fab) fab.style.display = (page === 'treinos' || page === 'home') ? 'flex' : 'none';
 
   if (page === 'home') renderHome();
   if (page === 'treinos') renderWorkouts();
   if (page === 'progresso') renderProgress();
   if (page === 'perfil') renderProfile();
+  if (page === 'planner') renderPlanner();
 }
 
 // ===== HOME =====
 function renderHome() {
   const stats = DB.getStats();
-  const s = settings;
+  document.getElementById('greeting-name').textContent = settings.name;
 
-  document.getElementById('greeting-name').textContent = s.name;
+  // Daily quote
+  const q = getDailyQuote();
+  const qEl = document.getElementById('daily-quote');
+  if (qEl) {
+    qEl.innerHTML = `<div class="quote-text">"${q.text}"</div><div class="quote-author">${q.author}</div>`;
+  }
+
   document.getElementById('stat-total').textContent = stats.total;
   document.getElementById('stat-week').textContent = stats.thisWeek;
   document.getElementById('stat-streak').textContent = stats.streak;
   document.getElementById('stat-vol').textContent = stats.totalVolume >= 1000
     ? (stats.totalVolume / 1000).toFixed(1) + 't' : stats.totalVolume.toFixed(0) + 'kg';
 
-  // streak banner
   const streakEl = document.getElementById('streak-banner');
   if (streakEl) {
     streakEl.style.display = stats.streak > 0 ? 'flex' : 'none';
     document.getElementById('streak-num').textContent = stats.streak + ' dia' + (stats.streak !== 1 ? 's' : '');
   }
 
-  // recent workouts
   const list = DB.getWorkouts().slice(0, 5);
   const container = document.getElementById('recent-list');
   if (!container) return;
@@ -131,24 +216,18 @@ function renderFilters() {
   ).join('');
 }
 
-function setFilter(m) {
-  filterMuscle = m;
-  renderFilters();
-  renderWorkoutList();
-}
+function setFilter(m) { filterMuscle = m; renderFilters(); renderWorkoutList(); }
 
 function renderWorkoutList() {
   let list = DB.getWorkouts();
-  if (filterMuscle !== 'Todos') {
-    list = list.filter(w => (w.muscles||[]).includes(filterMuscle));
-  }
+  if (filterMuscle !== 'Todos') list = list.filter(w => (w.muscles||[]).includes(filterMuscle));
   const container = document.getElementById('workout-list');
   if (!container) return;
   if (list.length === 0) {
     container.innerHTML = `<div class="empty-state">
       <div class="empty-icon">💪</div>
       <div class="empty-title">Nenhum treino aqui</div>
-      <div class="empty-sub">Adicione seu primeiro treino de ${filterMuscle === 'Todos' ? 'qualquer grupo' : filterMuscle}</div>
+      <div class="empty-sub">Adicione seu primeiro treino</div>
     </div>`;
     return;
   }
@@ -167,10 +246,9 @@ function renderWorkoutList() {
   }).join('');
 }
 
-// ===== ADD WORKOUT DRAWER =====
+// ===== ADD WORKOUT =====
 function setupFAB() {
-  const fab = document.getElementById('mainFab');
-  if (fab) fab.addEventListener('click', openAddWorkout);
+  document.getElementById('mainFab')?.addEventListener('click', openAddWorkout);
 }
 
 function openAddWorkout() {
@@ -179,19 +257,16 @@ function openAddWorkout() {
   document.getElementById('addOverlay').classList.add('open');
 }
 
-function closeAddWorkout() {
-  document.getElementById('addOverlay').classList.remove('open');
-}
+function closeAddWorkout() { document.getElementById('addOverlay').classList.remove('open'); }
 
 function renderDraft() {
   document.getElementById('wName').value = workoutDraft.name;
   document.getElementById('wNote').value = workoutDraft.note;
-  // muscles checkboxes
   const mc = document.getElementById('muscle-checks');
   if (mc) {
     mc.innerHTML = MUSCLE_GROUPS.filter(g => g !== 'Todos').map(g =>
       `<label style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--text2);cursor:pointer;">
-        <input type="checkbox" value="${g}" ${workoutDraft.muscles.includes(g) ? 'checked' : ''}
+        <input type="checkbox" value="${g}" ${workoutDraft.muscles.includes(g)?'checked':''}
           onchange="toggleMuscle('${g}',this.checked)" style="accent-color:var(--accent)"> ${g}
       </label>`
     ).join('');
@@ -241,21 +316,9 @@ function renderExercises() {
   `).join('');
 }
 
-function addExercise() {
-  workoutDraft.exercises.push({ name: '', sets: [{ reps:'', weight:'', obs:'' }] });
-  renderExercises();
-}
-
-function removeExercise(i) {
-  workoutDraft.exercises.splice(i, 1);
-  renderExercises();
-}
-
-function addSet(ei) {
-  workoutDraft.exercises[ei].sets.push({ reps:'', weight:'', obs:'' });
-  renderExercises();
-}
-
+function addExercise() { workoutDraft.exercises.push({ name: '', sets: [{ reps:'', weight:'', obs:'' }] }); renderExercises(); }
+function removeExercise(i) { workoutDraft.exercises.splice(i, 1); renderExercises(); }
+function addSet(ei) { workoutDraft.exercises[ei].sets.push({ reps:'', weight:'', obs:'' }); renderExercises(); }
 function updateExName(ei, val) { workoutDraft.exercises[ei].name = val; }
 function updateSet(ei, si, field, val) { workoutDraft.exercises[ei].sets[si][field] = val; }
 
@@ -264,7 +327,6 @@ function saveWorkout() {
   if (!name) { showToast('Digite um nome para o treino'); return; }
   workoutDraft.name = name;
   workoutDraft.note = document.getElementById('wNote').value.trim();
-  // clean empty exercises
   workoutDraft.exercises = workoutDraft.exercises.filter(e => e.name.trim());
   DB.addWorkout({ ...workoutDraft });
   closeAddWorkout();
@@ -279,7 +341,6 @@ function openWorkoutDetail(id) {
   if (!w) return;
   const overlay = document.getElementById('detailOverlay');
   const content = document.getElementById('detailContent');
-
   const date = new Date(w.createdAt).toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
   const totalVol = (w.exercises||[]).reduce((a,e) =>
     a + (e.sets||[]).reduce((b,s) => b + (+(s.weight||0))*(+(s.reps||0)), 0), 0);
@@ -301,14 +362,11 @@ function openWorkoutDetail(id) {
           <table class="sets-table">
             <thead><tr><th>Série</th><th>Reps</th><th>Peso</th><th>Obs</th></tr></thead>
             <tbody>
-              ${(ex.sets||[]).map((s,i) => `
-                <tr>
-                  <td>${i+1}</td>
-                  <td>${s.reps || '—'}</td>
-                  <td>${s.weight ? s.weight + 'kg' : '—'}</td>
-                  <td style="font-size:12px;color:var(--text2);">${s.obs || '—'}</td>
-                </tr>
-              `).join('')}
+              ${(ex.sets||[]).map((s,i) => `<tr>
+                <td>${i+1}</td><td>${s.reps||'—'}</td>
+                <td>${s.weight?s.weight+'kg':'—'}</td>
+                <td style="font-size:12px;color:var(--text2);">${s.obs||'—'}</td>
+              </tr>`).join('')}
             </tbody>
           </table>
         </div>
@@ -321,18 +379,249 @@ function openWorkoutDetail(id) {
   overlay.classList.add('open');
 }
 
-function closeDetail() {
-  document.getElementById('detailOverlay').classList.remove('open');
-}
+function closeDetail() { document.getElementById('detailOverlay').classList.remove('open'); }
 
 function deleteWorkout(id) {
   if (!confirm('Excluir este treino?')) return;
   DB.deleteWorkout(id);
   closeDetail();
   showToast('Treino excluído');
+  renderHome(); renderWorkouts(); renderProgress();
+}
+
+// ===== PLANNER (TREINOS PROGRAMADOS) =====
+function renderPlanner() {
+  const templates = DB.getTemplates();
+  const container = document.getElementById('template-list');
+  if (!container) return;
+
+  if (templates.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <div class="empty-title">Sem treinos programados</div>
+      <div class="empty-sub">Crie um template para começar treinos com check rápido</div>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = templates.map(t => {
+    const exCount = (t.exercises||[]).length;
+    return `<div class="template-card">
+      <div class="template-header" onclick="toggleTemplateExpand('tpl-ex-${t.id}')">
+        <div class="template-icon">${muscleEmoji(t.muscles)}</div>
+        <div class="template-info">
+          <div class="template-name">${escHtml(t.name)}</div>
+          <div class="template-meta">${exCount} exercício${exCount!==1?'s':''} · ${(t.muscles||[]).join(', ')||'Geral'}</div>
+        </div>
+        <div class="template-actions">
+          <button class="tpl-btn" onclick="event.stopPropagation();deleteTemplate('${t.id}')" title="Excluir">🗑</button>
+          <button class="tpl-btn start-tpl" onclick="event.stopPropagation();startActiveWorkout('${t.id}')" title="Iniciar treino">▶</button>
+        </div>
+      </div>
+      <div class="template-exercises" id="tpl-ex-${t.id}">
+        ${(t.exercises||[]).map(ex => `
+          <div class="tpl-ex-item">
+            <div class="tpl-ex-name">${escHtml(ex.name)}</div>
+            <div class="tpl-ex-meta">${ex.sets.length} série${ex.sets.length!==1?'s':''} · ${ex.sets[0]?.weight||'?'}kg · ${ex.sets[0]?.reps||'?'} reps</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleTemplateExpand(id) {
+  document.getElementById(id)?.classList.toggle('open');
+}
+
+function openAddTemplate() {
+  workoutDraft = { name: '', muscles: [], exercises: [], note: '' };
+  document.getElementById('addDrawerTitle').textContent = 'Novo Template';
+  document.getElementById('saveWorkoutBtn').onclick = saveAsTemplate;
+  renderDraft();
+  document.getElementById('addOverlay').classList.add('open');
+}
+
+function saveAsTemplate() {
+  const name = document.getElementById('wName').value.trim();
+  if (!name) { showToast('Digite um nome para o template'); return; }
+  workoutDraft.name = name;
+  workoutDraft.note = document.getElementById('wNote').value.trim();
+  workoutDraft.exercises = workoutDraft.exercises.filter(e => e.name.trim());
+  DB.addTemplate({ ...workoutDraft });
+  closeAddWorkout();
+  showToast('📋 Template salvo!');
+  renderPlanner();
+}
+
+function deleteTemplate(id) {
+  if (!confirm('Excluir este template?')) return;
+  DB.deleteTemplate(id);
+  renderPlanner();
+  showToast('Template excluído');
+}
+
+// ===== ACTIVE WORKOUT (check mode) =====
+function startActiveWorkout(templateId) {
+  const t = DB.getTemplate(templateId);
+  if (!t) return;
+
+  activeWorkout = {
+    templateId,
+    name: t.name,
+    muscles: t.muscles,
+    note: t.note || '',
+    exercises: t.exercises.map(ex => ({
+      name: ex.name,
+      done: false,
+      sets: ex.sets.map(s => ({ ...s, done: false }))
+    }))
+  };
+
+  saveActiveWorkoutState();
+  navigateTo('ativo');
+  renderActiveWorkout();
+  checkActiveWorkoutBar();
+}
+
+function saveActiveWorkoutState() {
+  if (activeWorkout) localStorage.setItem('forja_active', JSON.stringify(activeWorkout));
+  else localStorage.removeItem('forja_active');
+}
+
+function loadActiveWorkoutState() {
+  try { return JSON.parse(localStorage.getItem('forja_active') || 'null'); } catch { return null; }
+}
+
+function checkActiveWorkoutBar() {
+  activeWorkout = loadActiveWorkoutState();
+  const bar = document.getElementById('activeWorkoutBar');
+  if (!bar) return;
+  if (activeWorkout) {
+    bar.classList.add('open');
+    const nameEl = document.getElementById('awbName');
+    if (nameEl) nameEl.textContent = activeWorkout.name;
+    // show header offset
+    document.querySelector('.app-header').style.marginTop = '48px';
+  } else {
+    bar.classList.remove('open');
+    document.querySelector('.app-header').style.marginTop = '';
+  }
+}
+
+function renderActiveWorkout() {
+  if (!activeWorkout) return;
+  const container = document.getElementById('active-workout-container');
+  if (!container) return;
+
+  document.getElementById('active-workout-name').textContent = activeWorkout.name;
+
+  const total = activeWorkout.exercises.length;
+  const done = activeWorkout.exercises.filter(e => e.done).length;
+  document.getElementById('active-progress-text').textContent = `${done}/${total} exercícios`;
+
+  const pct = total > 0 ? (done/total*100) : 0;
+  const bar = document.getElementById('active-progress-bar');
+  if (bar) bar.style.width = pct + '%';
+
+  container.innerHTML = activeWorkout.exercises.map((ex, ei) => `
+    <div class="active-ex-card ${ex.done ? 'done' : ''}" id="aex-${ei}">
+      <div class="active-ex-header">
+        <div class="active-ex-check ${ex.done ? 'checked' : ''}" onclick="toggleExDone(${ei})">
+          ${ex.done ? '✓' : ''}
+        </div>
+        <div class="active-ex-name">${escHtml(ex.name)}</div>
+        <div class="active-ex-toggle" onclick="toggleActiveSetTable(${ei})">≡</div>
+      </div>
+      <div class="active-sets-table" id="asets-${ei}">
+        <div class="active-sets-header">
+          <span>#</span><span>Reps</span><span>Kg</span><span>Obs</span><span>✓</span>
+        </div>
+        ${ex.sets.map((s, si) => `
+          <div class="active-set-row" id="asr-${ei}-${si}">
+            <div class="active-set-num">${si+1}</div>
+            <input type="number" placeholder="Reps" value="${s.reps||''}" min="0"
+              oninput="updateActiveSet(${ei},${si},'reps',this.value)">
+            <input type="number" placeholder="Kg" value="${s.weight||''}" min="0" step="0.5"
+              oninput="updateActiveSet(${ei},${si},'weight',this.value)">
+            <input type="text" placeholder="—" value="${escHtml(s.obs||'')}"
+              oninput="updateActiveSet(${ei},${si},'obs',this.value)">
+            <div class="set-check-btn ${s.done?'done':''}" onclick="toggleSetDone(${ei},${si})">
+              ${s.done ? '✓' : '○'}
+            </div>
+          </div>
+        `).join('')}
+        <button class="rest-quick-btn" onclick="startQuickRest()">⏱ Iniciar descanso</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleActiveSetTable(ei) {
+  document.getElementById(`asets-${ei}`)?.classList.toggle('open');
+}
+
+function toggleExDone(ei) {
+  if (!activeWorkout) return;
+  activeWorkout.exercises[ei].done = !activeWorkout.exercises[ei].done;
+  saveActiveWorkoutState();
+  renderActiveWorkout();
+}
+
+function toggleSetDone(ei, si) {
+  if (!activeWorkout) return;
+  activeWorkout.exercises[ei].sets[si].done = !activeWorkout.exercises[ei].sets[si].done;
+  // auto-check exercise if all sets done
+  const allDone = activeWorkout.exercises[ei].sets.every(s => s.done);
+  if (allDone) activeWorkout.exercises[ei].done = true;
+  saveActiveWorkoutState();
+  renderActiveWorkout();
+}
+
+function updateActiveSet(ei, si, field, val) {
+  if (!activeWorkout) return;
+  activeWorkout.exercises[ei].sets[si][field] = val;
+  saveActiveWorkoutState();
+}
+
+function startQuickRest() {
+  const secs = settings.restTime || 90;
+  Timer.startRest(secs);
+  showToast(`⏱ Descanso de ${Timer.formatTime(secs)} iniciado`);
+  showMiniTimer();
+  navigateTo('timer');
+}
+
+function finishActiveWorkout() {
+  if (!activeWorkout) return;
+  if (!confirm('Finalizar e salvar este treino?')) return;
+
+  // Build workout from active state
+  const workout = {
+    name: activeWorkout.name,
+    muscles: activeWorkout.muscles || [],
+    note: activeWorkout.note || '',
+    exercises: activeWorkout.exercises.map(ex => ({
+      name: ex.name,
+      sets: ex.sets.map(s => ({ reps: s.reps||'', weight: s.weight||'', obs: s.obs||'' }))
+    })).filter(ex => ex.name)
+  };
+
+  DB.addWorkout(workout);
+  activeWorkout = null;
+  saveActiveWorkoutState();
+  checkActiveWorkoutBar();
+  showToast('🏆 Treino finalizado e salvo!');
+  navigateTo('home');
   renderHome();
-  renderWorkouts();
-  renderProgress();
+}
+
+function abandonActiveWorkout() {
+  if (!confirm('Abandonar treino atual?')) return;
+  activeWorkout = null;
+  saveActiveWorkoutState();
+  checkActiveWorkoutBar();
+  navigateTo('planner');
 }
 
 // ===== TIMER =====
@@ -351,7 +640,6 @@ function setupTimer() {
     hideMiniTimer();
   });
 
-  // presets click
   document.querySelectorAll('.timer-preset').forEach(btn => {
     btn.addEventListener('click', () => {
       const s = parseInt(btn.dataset.seconds);
@@ -385,7 +673,6 @@ function setupTimer() {
     hideMiniTimer();
   });
 
-  // init display
   updateTimerDisplay(dur, dur);
 }
 
@@ -404,83 +691,58 @@ function applyCustomTime() {
 function updateTimerDisplay(rem, total) {
   const display = document.getElementById('timerValue');
   if (display) display.textContent = Timer.formatTime(rem);
-
-  // ring
   const ring = document.getElementById('timerProgressRing');
   if (ring) {
-    const r = 88;
-    const circ = 2 * Math.PI * r;
+    const r = 88, circ = 2 * Math.PI * r;
     const pct = total > 0 ? rem / total : 1;
     ring.style.strokeDasharray = circ;
     ring.style.strokeDashoffset = circ * (1 - pct);
   }
 }
 
-function showMiniTimer() {
-  document.getElementById('timerFab').style.display = 'block';
-}
-function hideMiniTimer() {
-  document.getElementById('timerFab').style.display = 'none';
-}
+function showMiniTimer() { document.getElementById('timerFab').style.display = 'block'; }
+function hideMiniTimer() { document.getElementById('timerFab').style.display = 'none'; }
 function updateMiniTimer(rem) {
   const el = document.getElementById('miniTimerVal');
   if (el) el.textContent = Timer.formatTime(rem);
 }
 
 // ===== PROGRESS =====
-function setProgressPeriod(p) {
-  progressPeriod = p;
-  document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b.dataset.period === p));
-  renderProgress();
-}
-
 function renderProgress() {
   const stats = DB.getStats();
-
-  // heatmap
   const hm = document.getElementById('heatmap-grid');
   if (hm) {
     hm.innerHTML = stats.heatmap.map(d => {
-      const lvl = d.count === 0 ? 0 : d.count === 1 ? 1 : d.count === 2 ? 2 : d.count >= 3 ? 3 : 4;
-      return `<div class="heatmap-day level-${lvl}" title="${d.date}: ${d.count} treino(s)"></div>`;
+      const lvl = d.count === 0 ? 0 : d.count === 1 ? 1 : d.count === 2 ? 2 : 3;
+      return `<div class="heatmap-day level-${lvl}" title="${d.date}: ${d.count}"></div>`;
     }).join('');
   }
-
-  // PRs
   const prList = document.getElementById('pr-list');
   if (prList) {
     const entries = Object.entries(stats.prs).sort((a,b) => b[1]-a[1]).slice(0,8);
     prList.innerHTML = entries.length === 0
       ? '<p style="color:var(--text2);font-size:14px;">Sem PRs registrados ainda.</p>'
       : entries.map(([name, kg]) =>
-          `<div class="pr-item">
-            <span class="pr-name">${escHtml(name)}</span>
-            <span class="pr-value">${kg}<span class="pr-unit">kg</span></span>
-          </div>`
+          `<div class="pr-item"><span class="pr-name">${escHtml(name)}</span>
+          <span class="pr-value">${kg}<span class="pr-unit">kg</span></span></div>`
         ).join('');
   }
-
-  // muscle bars
   const mbEl = document.getElementById('muscle-bars');
   if (mbEl) {
     const entries = Object.entries(stats.muscles).sort((a,b) => b[1]-a[1]).slice(0,6);
     const maxM = Math.max(...entries.map(e => e[1]), 1);
     mbEl.innerHTML = entries.length === 0
-      ? '<p style="color:var(--text2);font-size:14px;">Treine para ver seus grupos favoritos.</p>'
+      ? '<p style="color:var(--text2);font-size:14px;">Treine para ver seus grupos.</p>'
       : entries.map(([m, n]) => `
           <div class="muscle-bar-item">
             <div class="muscle-bar-header">
               <span class="muscle-bar-name">${m}</span>
               <span class="muscle-bar-count">${n} treino${n!==1?'s':''}</span>
             </div>
-            <div class="muscle-bar-track">
-              <div class="muscle-bar-fill" style="width:${(n/maxM*100).toFixed(0)}%"></div>
-            </div>
+            <div class="muscle-bar-track"><div class="muscle-bar-fill" style="width:${(n/maxM*100).toFixed(0)}%"></div></div>
           </div>
         `).join('');
   }
-
-  // charts (with slight delay for layout)
   setTimeout(() => {
     const { weeklyVolume } = stats;
     Charts.drawBarChart('chartVolume', weeklyVolume.map(w => w.label), weeklyVolume.map(w => w.vol));
@@ -495,6 +757,10 @@ function renderProfile() {
   document.getElementById('profileTotal').textContent = stats.total + ' treinos';
   const toggle = document.getElementById('themeToggleCheck');
   if (toggle) toggle.checked = settings.theme === 'light';
+  const ni = document.getElementById('profileNameInput');
+  if (ni) ni.value = settings.name;
+  const ri = document.getElementById('restTimeInput');
+  if (ri) ri.value = settings.restTime || 90;
 }
 
 function setupProfile() {
@@ -504,7 +770,6 @@ function setupProfile() {
     document.getElementById('profileName').textContent = settings.name;
     document.getElementById('greeting-name').textContent = settings.name;
   });
-
   document.getElementById('restTimeInput')?.addEventListener('input', (e) => {
     const v = parseInt(e.target.value);
     if (v > 0) {
@@ -517,12 +782,10 @@ function setupProfile() {
   });
 }
 
-function openProfileNameEdit() {
-  const input = document.getElementById('profileNameInput');
-  if (input) {
-    input.value = settings.name;
-    input.focus();
-  }
+function requestNotifPermission() {
+  Timer.requestNotificationPermission().then(granted => {
+    showToast(granted ? '🔔 Notificações ativadas!' : '❌ Permissão negada');
+  });
 }
 
 // ===== UTILS =====

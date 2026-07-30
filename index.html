@@ -14,7 +14,26 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+<!-- ===== ONBOARDING ===== -->
+<div class="onboarding-overlay" id="onboardingOverlay">
+  <div class="onboarding-fire">🔥</div>
+  <div class="onboarding-logo">FOR<span>J</span>A</div>
+  <div class="onboarding-tagline">Seu diário de treinos pessoal</div>
+  <div class="onboarding-question">Qual é o seu nome?</div>
+  <input class="onboarding-input" id="onboardingName" type="text" placeholder="Digite seu nome..." maxlength="30" autocomplete="off">
+  <button class="onboarding-btn" onclick="finishOnboarding()">VAMOS TREINAR</button>
+  <div class="onboarding-sub">Seus dados ficam 100% no seu dispositivo 🔒</div>
+</div>
+
 <div id="app">
+
+  <!-- ACTIVE WORKOUT BAR -->
+  <div class="active-workout-bar" id="activeWorkoutBar">
+    <span style="font-size:16px;">🏋️</span>
+    <span class="awb-name" id="awbName">Treino em andamento</span>
+    <button class="awb-finish" onclick="navigateTo('ativo')">Ver treino</button>
+  </div>
 
   <!-- HEADER -->
   <header class="app-header">
@@ -32,6 +51,8 @@
       <div class="greeting-sub">Bem-vindo de volta</div>
       <div class="greeting-name" id="greeting-name">Atleta</div>
     </div>
+
+    <div class="quote-box" id="daily-quote"></div>
 
     <div class="stats-grid">
       <div class="stat-card accent-card">
@@ -70,6 +91,43 @@
     <p class="section-title">Meus <span>Treinos</span></p>
     <div class="filter-row" id="filter-row"></div>
     <div id="workout-list"></div>
+  </section>
+
+  <!-- PLANNER -->
+  <section class="page" id="page-planner">
+    <div style="padding-top:8px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <p class="section-title" style="margin-bottom:0;">Treinos <span>Programados</span></p>
+      <button class="icon-btn" onclick="openAddTemplate()" title="Novo template" style="font-size:22px;">+</button>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;font-size:13px;color:var(--text2);line-height:1.7;">
+      💡 Crie templates com seus exercícios favoritos. Na hora de treinar, toque em <strong style="color:var(--accent);">▶</strong> e vá dando check em cada série!
+    </div>
+    <div id="template-list"></div>
+  </section>
+
+  <!-- TREINO ATIVO -->
+  <section class="page" id="page-ativo">
+    <div style="padding-top:8px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div class="section-title" style="margin-bottom:0;" id="active-workout-name">Treino</div>
+      <button class="icon-btn" onclick="abandonActiveWorkout()" style="font-size:14px;width:auto;padding:0 12px;border-radius:8px;">✕ Abandonar</button>
+    </div>
+
+    <!-- progress bar -->
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;">Progresso</span>
+        <span style="font-size:12px;color:var(--accent);font-weight:600;" id="active-progress-text">0/0</span>
+      </div>
+      <div style="height:6px;background:var(--bg3);border-radius:99px;overflow:hidden;">
+        <div id="active-progress-bar" style="height:100%;background:var(--accent);border-radius:99px;width:0%;transition:width 0.4s ease;"></div>
+      </div>
+    </div>
+
+    <div id="active-workout-container" class="active-ex-list"></div>
+
+    <button class="btn-primary" style="margin-top:16px;" onclick="finishActiveWorkout()">🏆 Finalizar e Salvar Treino</button>
   </section>
 
   <!-- TEMPORIZADOR -->
@@ -115,7 +173,7 @@
 
     <div class="card">
       <p style="font-size:13px;color:var(--text2);line-height:1.7;">
-        💡 <strong style="color:var(--text);">Dica do personal:</strong> Descanso ideal por objetivo:<br>
+        💡 <strong style="color:var(--text);">Dica do personal:</strong><br>
         <strong style="color:var(--accent);">Força</strong> → 2–3 min &nbsp;|&nbsp;
         <strong style="color:var(--accent);">Hipertrofia</strong> → 60–90s &nbsp;|&nbsp;
         <strong style="color:var(--accent);">Resistência</strong> → 30–45s
@@ -127,8 +185,6 @@
   <section class="page" id="page-progresso">
     <div style="padding-top:8px;"></div>
     <p class="section-title">Meu <span>Progresso</span></p>
-
-    <!-- heatmap -->
     <div class="chart-card">
       <div class="chart-card-title">Consistência — últimos 28 dias</div>
       <div class="heatmap-grid" id="heatmap-grid"></div>
@@ -137,26 +193,18 @@
         <span class="heatmap-label">Hoje</span>
       </div>
     </div>
-
-    <!-- volume chart -->
     <div class="chart-card">
       <div class="chart-card-title">Volume semanal (kg·rep)</div>
       <canvas id="chartVolume"></canvas>
     </div>
-
-    <!-- PRs -->
     <div class="chart-card">
-      <div class="chart-card-title">Recordes pessoais (maior peso) 🏆</div>
+      <div class="chart-card-title">Recordes pessoais 🏆</div>
       <div id="pr-list" class="pr-list"></div>
     </div>
-
-    <!-- muscle frequency -->
     <div class="chart-card">
       <div class="chart-card-title">Grupos musculares treinados</div>
       <div id="muscle-bars"></div>
     </div>
-
-    <!-- freq chart -->
     <div class="chart-card">
       <div class="chart-card-title">Frequência semanal</div>
       <canvas id="chartFreq"></canvas>
@@ -166,7 +214,6 @@
   <!-- PERFIL -->
   <section class="page" id="page-perfil">
     <div style="padding-top:8px;"></div>
-
     <div class="profile-header">
       <div class="avatar">💪</div>
       <div class="profile-name" id="profileName">Atleta</div>
@@ -179,7 +226,7 @@
       <div class="setting-row">
         <div class="setting-left">
           <div class="setting-title">Seu nome</div>
-          <div class="setting-sub">Aparece no início do app</div>
+          <div class="setting-sub">Aparece na tela inicial</div>
         </div>
         <input id="profileNameInput" type="text" placeholder="Nome" style="
           width:130px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);
@@ -200,11 +247,23 @@
       <div class="setting-row">
         <div class="setting-left">
           <div class="setting-title">Descanso padrão (seg)</div>
-          <div class="setting-sub">Usado como duração inicial do timer</div>
+          <div class="setting-sub">Duração inicial do timer</div>
         </div>
         <input id="restTimeInput" type="number" min="10" max="600" value="90" style="
           width:80px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);
           background:var(--input-bg);color:var(--text);font-size:14px;text-align:right;outline:none;">
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-left">
+          <div class="setting-title">Notificações de descanso</div>
+          <div class="setting-sub">Aviso quando o timer terminar</div>
+        </div>
+        <button onclick="requestNotifPermission()" style="
+          padding:8px 14px;border-radius:8px;border:1px solid var(--border);
+          background:var(--input-bg);color:var(--accent);font-size:13px;font-weight:600;">
+          🔔 Ativar
+        </button>
       </div>
     </div>
 
@@ -220,24 +279,22 @@
   <!-- BOTTOM NAV -->
   <nav class="bottom-nav">
     <button class="nav-item active" data-page="home">
-      <span class="nav-icon">🏠</span>
-      <span>Início</span>
+      <span class="nav-icon">🏠</span><span>Início</span>
     </button>
     <button class="nav-item" data-page="treinos">
-      <span class="nav-icon">🏋️</span>
-      <span>Treinos</span>
+      <span class="nav-icon">🏋️</span><span>Treinos</span>
+    </button>
+    <button class="nav-item" data-page="planner">
+      <span class="nav-icon">📋</span><span>Planner</span>
     </button>
     <button class="nav-item" data-page="timer">
-      <span class="nav-icon">⏱</span>
-      <span>Timer</span>
+      <span class="nav-icon">⏱</span><span>Timer</span>
     </button>
     <button class="nav-item" data-page="progresso">
-      <span class="nav-icon">📈</span>
-      <span>Progresso</span>
+      <span class="nav-icon">📈</span><span>Progresso</span>
     </button>
     <button class="nav-item" data-page="perfil">
-      <span class="nav-icon">👤</span>
-      <span>Perfil</span>
+      <span class="nav-icon">👤</span><span>Perfil</span>
     </button>
   </nav>
 
@@ -252,36 +309,29 @@
     </div>
   </div>
 
-</div><!-- end #app -->
+</div>
 
-<!-- ADD WORKOUT OVERLAY -->
+<!-- ADD WORKOUT / TEMPLATE OVERLAY -->
 <div class="overlay" id="addOverlay" onclick="if(event.target===this)closeAddWorkout()">
   <div class="drawer">
     <div class="drawer-handle"></div>
-    <div class="drawer-title">Novo Treino</div>
-
+    <div class="drawer-title" id="addDrawerTitle">Novo Treino</div>
     <div class="field">
-      <label>Nome do treino *</label>
+      <label>Nome *</label>
       <input type="text" id="wName" placeholder="Ex: Peito e Tríceps, Leg Day...">
     </div>
-
     <div class="field">
       <label>Grupos musculares</label>
       <div id="muscle-checks" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;"></div>
     </div>
-
-    <div class="field">
-      <label>Exercícios</label>
-    </div>
+    <div class="field"><label>Exercícios</label></div>
     <div id="exercises-list" class="exercises-list"></div>
     <button class="btn-add-ex" onclick="addExercise()">+ Adicionar exercício</button>
-
     <div class="field">
       <label>Observações</label>
       <textarea id="wNote" placeholder="Como foi o treino hoje?"></textarea>
     </div>
-
-    <button class="btn-primary" onclick="saveWorkout()">💾 Salvar Treino</button>
+    <button class="btn-primary" id="saveWorkoutBtn" onclick="saveWorkout()">💾 Salvar</button>
     <button class="btn-secondary" onclick="closeAddWorkout()">Cancelar</button>
   </div>
 </div>
@@ -298,7 +348,6 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- SCRIPTS -->
 <script src="js/db.js"></script>
 <script src="js/timer.js"></script>
 <script src="js/charts.js"></script>

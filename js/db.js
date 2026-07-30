@@ -9,7 +9,7 @@ const DB = {
 
   // ---- Settings ----
   getSettings() {
-    return this._read('settings') || { theme: 'dark', name: 'Atleta', restTime: 90, notifyRest: true };
+    return this._read('settings') || { theme: 'dark', name: '', restTime: 90, notifyRest: true, firstTime: true };
   },
   saveSettings(s) { this._write('settings', s); },
 
@@ -30,6 +30,26 @@ const DB = {
   },
   getWorkout(id) { return this.getWorkouts().find(w => w.id === id); },
 
+  // ---- Templates (treinos programados) ----
+  getTemplates() { return this._read('templates') || []; },
+  saveTemplates(list) { this._write('templates', list); },
+  addTemplate(t) {
+    const list = this.getTemplates();
+    t.id = Date.now().toString();
+    t.createdAt = new Date().toISOString();
+    list.push(t);
+    this.saveTemplates(list);
+    return t;
+  },
+  updateTemplate(t) {
+    const list = this.getTemplates().map(x => x.id === t.id ? t : x);
+    this.saveTemplates(list);
+  },
+  deleteTemplate(id) {
+    this.saveTemplates(this.getTemplates().filter(t => t.id !== id));
+  },
+  getTemplate(id) { return this.getTemplates().find(t => t.id === id); },
+
   // ---- Stats ----
   getStats() {
     const workouts = this.getWorkouts();
@@ -37,14 +57,10 @@ const DB = {
     const weekAgo = new Date(now - 7 * 864e5);
     const monthAgo = new Date(now - 30 * 864e5);
 
-    // streak
     let streak = 0;
     const days = new Set(workouts.map(w => w.createdAt.slice(0, 10)));
     let d = new Date(); d.setHours(0,0,0,0);
-    while (days.has(d.toISOString().slice(0,10))) {
-      streak++;
-      d.setDate(d.getDate() - 1);
-    }
+    while (days.has(d.toISOString().slice(0,10))) { streak++; d.setDate(d.getDate() - 1); }
 
     const totalVolume = workouts.reduce((acc, w) =>
       acc + (w.exercises||[]).reduce((a2, e) =>
@@ -53,7 +69,6 @@ const DB = {
     const thisWeek = workouts.filter(w => new Date(w.createdAt) >= weekAgo).length;
     const thisMonth = workouts.filter(w => new Date(w.createdAt) >= monthAgo).length;
 
-    // PRs per exercise
     const prs = {};
     workouts.forEach(w => {
       (w.exercises||[]).forEach(e => {
@@ -64,7 +79,6 @@ const DB = {
       });
     });
 
-    // heatmap last 28 days
     const heatmap = [];
     for (let i = 27; i >= 0; i--) {
       const date = new Date(now - i * 864e5);
@@ -73,13 +87,9 @@ const DB = {
       heatmap.push({ date: key, count });
     }
 
-    // muscle groups
     const muscles = {};
-    workouts.forEach(w => {
-      (w.muscles||[]).forEach(m => { muscles[m] = (muscles[m]||0) + 1; });
-    });
+    workouts.forEach(w => { (w.muscles||[]).forEach(m => { muscles[m] = (muscles[m]||0) + 1; }); });
 
-    // weekly volume last 8 weeks
     const weeklyVolume = [];
     for (let i = 7; i >= 0; i--) {
       const start = new Date(now - (i+1)*7*864e5);
@@ -88,8 +98,7 @@ const DB = {
         .filter(w => { const d = new Date(w.createdAt); return d >= start && d < end; })
         .reduce((acc, w) => acc + (w.exercises||[]).reduce((a, e) =>
           a + (e.sets||[]).reduce((b, s) => b + (+(s.weight||0))*(+(s.reps||0)), 0), 0), 0);
-      const label = `S${8-i}`;
-      weeklyVolume.push({ label, vol });
+      weeklyVolume.push({ label: `S${8-i}`, vol });
     }
 
     return { streak, totalVolume, thisWeek, thisMonth, prs, heatmap, muscles, weeklyVolume, total: workouts.length };
