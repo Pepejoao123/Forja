@@ -1,12 +1,12 @@
-// FORJA – Timer Module with Push Notification support
+// FORJA – Timer Module v3 (background-safe via timestamp)
 const Timer = (() => {
   let duration = 90;
   let remaining = 90;
   let interval = null;
   let running = false;
+  let startedAt = null;   // timestamp quando iniciou
   let onTickCb = null;
   let onEndCb = null;
-  let swTimerTimeout = null; // background timer via SW
 
   function beep(freq = 880, dur = 0.2, vol = 0.4) {
     try {
@@ -22,54 +22,102 @@ const Timer = (() => {
   }
 
   function formatTime(s) {
+    s = Math.max(0, Math.round(s));
     const m = Math.floor(s / 60);
     return `${String(m).padStart(2,'0')}:${String(s % 60).padStart(2,'0')}`;
   }
 
-  // Schedule a push notification via Service Worker for when app is in background
   async function scheduleNotification(seconds) {
     if (!('serviceWorker' in navigator) || !('Notification' in window)) return;
     if (Notification.permission !== 'granted') return;
-    const reg = await navigator.serviceWorker.ready;
-    // Cancel any pending
-    cancelScheduledNotification();
-    // Post message to SW to schedule
-    if (reg.active) {
-      reg.active.postMessage({ type: 'SCHEDULE_NOTIFICATION', delay: seconds * 1000 });
-    }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg.active) {
+        reg.active.postMessage({ type: 'SCHEDULE_NOTIFICATION', delay: seconds * 1000 });
+      }
+    } catch(e) {}
   }
 
   function cancelScheduledNotification() {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then(reg => {
-        if (reg.active) reg.active.postMessage({ type: 'CANCEL_NOTIFICATION' });
-      });
-    }
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(reg => {
+      if (reg.active) reg.active.postMessage({ type: 'CANCEL_NOTIFICATION' });
+    }).catch(() => {});
+  }
+
+  // Salva estado no localStorage para recuperar se app recarregar
+  function persistState() {
+    localStorage.setItem('forja_timer', JSON.stringify({
+      duration, startedAt, running
+    }));
+  }
+
+  function clearPersistedState() {
+    localStorage.removeItem('forja_timer');
+  }
+
+  // Recupera estado ao reabrir o app
+  function restoreState() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('forja_timer') || 'null');
+      if (!saved || !saved.running || !saved.startedAt) return false;
+      const elapsed = (Date.now() - saved.startedAt) / 1000;
+      const rem = saved.duration - elapsed;
+      if (rem <= 0) {
+        // Já terminou enquanto estava em background
+        clearPersistedState();
+        return false;
+      }
+      duration = saved.duration;
+      startedAt = saved.startedAt;
+      remaining = rem;
+      return true;
+    } catch { return false; }
   }
 
   function tick() {
-    remaining--;
+    // Calcula com base no timestamp real — imune a throttling do browser
+    if (!startedAt) return;
+    const elapsed = (Date.now() - startedAt) / 1000;
+    remaining = Math.max(0, duration - elapsed);
+
     if (remaining <= 0) {
       remaining = 0;
       clearInterval(interval);
       running = false;
+      clearPersistedState();
       beep(660, 0.15);
       setTimeout(() => beep(880, 0.15), 180);
       setTimeout(() => beep(1100, 0.3), 360);
       cancelScheduledNotification();
       if (onEndCb) onEndCb();
-    } else if (remaining <= 3) {
-      beep(440, 0.1);
+      return;
     }
+
+    if (remaining <= 3) beep(440, 0.08);
     if (onTickCb) onTickCb(remaining, duration);
   }
 
+  // Tenta restaurar timer ativo ao carregar
+  if (restoreState()) {
+    running = true;
+    interval = setInterval(tick, 500);
+  }
+
   return {
-    setDuration(s) { duration = s; remaining = s; if (onTickCb) onTickCb(remaining, duration); },
+    setDuration(s) {
+      duration = s;
+      remaining = s;
+      startedAt = null;
+      if (onTickCb) onTickCb(remaining, duration);
+    },
     getDuration() { return duration; },
     getRemaining() { return remaining; },
     isRunning() { return running; },
     formatTime,
+    wasRestoredFromBackground() {
+      return running && startedAt !== null;
+    },
 
     async requestNotificationPermission() {
       if (!('Notification' in window)) return false;
@@ -81,22 +129,28 @@ const Timer = (() => {
     start() {
       if (running) return;
       if (remaining <= 0) remaining = duration;
+      startedAt = Date.now() - (duration - remaining) * 1000;
       running = true;
-      interval = setInterval(tick, 1000);
+      interval = setInterval(tick, 500);
+      persistState();
       scheduleNotification(remaining);
     },
 
     pause() {
       clearInterval(interval);
       running = false;
+      startedAt = null;
       cancelScheduledNotification();
+      clearPersistedState();
     },
 
     reset() {
       clearInterval(interval);
       running = false;
       remaining = duration;
+      startedAt = null;
       cancelScheduledNotification();
+      clearPersistedState();
       if (onTickCb) onTickCb(remaining, duration);
     },
 

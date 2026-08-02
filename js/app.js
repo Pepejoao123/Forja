@@ -769,6 +769,26 @@ function renderProfile() {
   if (ni) ni.value = settings.name;
   const ri = document.getElementById('restTimeInput');
   if (ri) ri.value = settings.restTime || 90;
+
+  // Notification permission status
+  const statusEl = document.getElementById('notif-status');
+  const btnEl = document.getElementById('notif-btn');
+  if (statusEl && 'Notification' in window) {
+    if (Notification.permission === 'granted') {
+      statusEl.textContent = '✅ Ativadas';
+      statusEl.style.color = '#2ecc71';
+      if (btnEl) { btnEl.textContent = '✓ Ativo'; btnEl.style.color = '#2ecc71'; }
+    } else if (Notification.permission === 'denied') {
+      statusEl.textContent = '❌ Bloqueadas — ative nas configurações do celular';
+      statusEl.style.color = '#e05040';
+      if (btnEl) btnEl.textContent = '⚙️ Configurações';
+    } else {
+      statusEl.textContent = 'Toque para ativar';
+      if (btnEl) btnEl.textContent = '🔔 Ativar';
+    }
+  } else if (statusEl) {
+    statusEl.textContent = 'Não suportado neste dispositivo';
+  }
 }
 
 function setupProfile() {
@@ -792,8 +812,22 @@ function setupProfile() {
 
 function requestNotifPermission() {
   Timer.requestNotificationPermission().then(granted => {
-    showToast(granted ? '🔔 Notificações ativadas!' : '❌ Permissão negada');
+    if (granted) {
+      showToast('🔔 Notificações ativadas!');
+      requestOverlayPermission();
+    } else {
+      showToast('❌ Permissão negada — verifique as configurações do celular');
+    }
   });
+}
+
+function requestOverlayPermission() {
+  try {
+    const intentUrl = 'intent:#Intent;action=android.settings.action.MANAGE_OVERLAY_PERMISSION;end';
+    const a = document.createElement('a');
+    a.href = intentUrl;
+    a.click();
+  } catch(e) {}
 }
 
 // ===== UTILS =====

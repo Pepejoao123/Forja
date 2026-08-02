@@ -257,13 +257,16 @@
       <div class="setting-row">
         <div class="setting-left">
           <div class="setting-title">Notificações de descanso</div>
-          <div class="setting-sub">Aviso quando o timer terminar</div>
+          <div class="setting-sub" id="notif-status">Verificando...</div>
         </div>
-        <button onclick="requestNotifPermission()" style="
+        <button id="notif-btn" onclick="requestNotifPermission()" style="
           padding:8px 14px;border-radius:8px;border:1px solid var(--border);
           background:var(--input-bg);color:var(--accent);font-size:13px;font-weight:600;">
           🔔 Ativar
         </button>
+      </div>
+      <div style="background:var(--input-bg);border-radius:10px;padding:12px 14px;margin-top:4px;font-size:12px;color:var(--text2);line-height:1.7;">
+        ⚠️ Após ativar, vá em <strong style="color:var(--text);">Configurações do celular → Apps → FORJA → Permissões</strong> e confirme que <strong style="color:var(--accent);">Notificações</strong> e <strong style="color:var(--accent);">Exibir sobre outros apps</strong> estão habilitados.
       </div>
     </div>
 
